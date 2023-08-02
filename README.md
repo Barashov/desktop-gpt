@@ -1,5 +1,21 @@
 # Chat GPT desktop
-
+## configure:
+```shell
+python -m venv venv
+```
+linux:
+```shell
+source venv/bin/activate
+```
+windows:
+```shell
+venv\Scripts\activate
+```
+install requirements
+```shell
+pip install -r requirements.txt 
+```
+## use
 transcribe all audio and video files
 in folder
 ```shell
