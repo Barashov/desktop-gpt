@@ -6,6 +6,9 @@ from typing import Generator
 from moviepy.editor import VideoFileClip
 import requests
 import re
+from dotenv import load_dotenv
+import settings
+load_dotenv()
 
 openai_key = os.environ.get('OPENAI_API_KEY')
 
@@ -65,15 +68,22 @@ def transcribe_audio_segment(audio: AudioSegment):
     audio.export(out_f=filename, format='mp3')
     with open(filename, 'rb') as file:
         os.remove(filename)
-
         payload = {
             'model': (None, 'whisper-1'),
-            'file': ('file.mp3', file)
+            'file': ('file.mp3', file),
+            'prompt': (None, settings.PROMPT),
+            'response_format': (None, settings.RESPONSE_FORMAT),
+            'language': (None, settings.LANGUAGE),
+            'temperature': (None, settings.TEMPERATURE)
+
         }
         response = requests.post(url=whisper_url, files=payload, headers=headers)
-    if response.status_code == 200:
+    if response.status_code == 401:
+        print('Unauthorized')
+    elif response.status_code == 400:
+        print(response.content)
+    elif response.status_code == 200:
         return response.json()['text']
-    return response.json()
 
 
 def chop_audio(audio: AudioSegment, chunk_duration: int) -> Generator:
