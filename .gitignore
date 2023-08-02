@@ -1,0 +1,7 @@
+.env
+venv
+file/*
+__pycache__
+video.mp4
+file_1.mp3
+.idea
