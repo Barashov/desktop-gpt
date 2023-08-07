@@ -1,4 +1,4 @@
-# Chat GPT desktop
+# Desktop file transribe
 ## configure:
 ```shell
 python -m venv venv
