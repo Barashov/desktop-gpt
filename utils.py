@@ -8,6 +8,7 @@ import requests
 import re
 from dotenv import load_dotenv
 import settings
+from tqdm import tqdm
 load_dotenv()
 
 openai_key = os.environ.get('OPENAI_API_KEY')
@@ -16,16 +17,23 @@ openai_key = os.environ.get('OPENAI_API_KEY')
 def transcribe_file(file_path):
 
     if is_audio(file_path):
-        gen = transcribe_audio(file_path)
+        # gen = transcribe_audio(file_path)
+        audio = AudioSegment.from_file(file_path)
     elif is_video(file_path):
-        gen = transcribe_video(file_path)
+        audio = extract_audio_from_video(file_path)
     else:
         return
+    chunks = chop_audio(audio, 60)
+    total = len(chunks)
 
     filename, _ = os.path.splitext(file_path)
-    with open(f'{filename}.txt', 'w') as file:
-        for text in gen:
-            file.write(re.sub(r'([.?!])', r'\1\n ', text))
+    with tqdm(total=total, desc=file_path) as tq:
+
+        with open(f'{filename}.txt', 'w') as file:
+            for chunk in chunks:
+                text = transcribe_audio_segment(chunk)
+                file.write(re.sub(r'([.?!])', r'\1\n ', text))
+                tq.update(1)
 
 
 def get_type(filename):
@@ -51,13 +59,14 @@ def transcribe_audio(filename):
         yield text
 
 
-def transcribe_video(file_path):
+def extract_audio_from_video(file_path) -> AudioSegment:
     video = VideoFileClip(file_path)
     audio = video.audio
     filename = f'file/{uuid4()}.mp3'
     audio.write_audiofile(filename)
-    for text in transcribe_audio(filename):
-        yield text
+    audio_segment = AudioSegment.from_file(filename)
+    os.remove(filename)
+    return audio_segment
 
 
 def transcribe_audio_segment(audio: AudioSegment):
@@ -86,7 +95,7 @@ def transcribe_audio_segment(audio: AudioSegment):
         return response.json()['text']
 
 
-def chop_audio(audio: AudioSegment, chunk_duration: int) -> Generator:
+def chop_audio(audio: AudioSegment, chunk_duration: int) -> list[AudioSegment]:
     """
     :param audio: Audiosegment
     :param chunk_duration: chunk duration in seconds
@@ -95,12 +104,13 @@ def chop_audio(audio: AudioSegment, chunk_duration: int) -> Generator:
 
     start_time = 0
     end_time = chunk_duration * 1000
-
+    chunks = []
     while True:
         if start_time >= audio.duration_seconds * 1000:
             break
 
-        yield audio[start_time:end_time]
+        chunks.append(audio[start_time:end_time])
 
         start_time = end_time
         end_time += chunk_duration * 1000
+    return chunks
